@@ -1,0 +1,62 @@
+[
+  {
+    "id": "HOSP-001",
+    "name": "Bhaktivedanta Hospital & Research Institute",
+    "address": "Sector 1, Srishti Complex, Mira Road East, Thane 401107",
+    "location": {
+      "latitude": 19.2905,
+      "longitude": 72.8628
+    },
+    "emergency_contact": "022-29452500",
+    "icu_beds_available": 6,
+    "has_trauma_center": true
+  },
+  {
+    "id": "HOSP-002",
+    "name": "Wockhardt Hospital",
+    "address": "The Umrao IMSR, Near Railway Station, Mira Road East 401107",
+    "location": {
+      "latitude": 19.2915,
+      "longitude": 72.8540
+    },
+    "emergency_contact": "022-68800108",
+    "icu_beds_available": 9,
+    "has_trauma_center": true
+  },
+  {
+    "id": "HOSP-003",
+    "name": "Thunga Hospital",
+    "address": "Mira Bhayandar Road, Beverly Park, Mira Road East 401107",
+    "location": {
+      "latitude": 19.2970,
+      "longitude": 72.8535
+    },
+    "emergency_contact": "022-28114400",
+    "icu_beds_available": 4,
+    "has_trauma_center": false
+  },
+  {
+    "id": "HOSP-004",
+    "name": "Orbit Multispeciality Hospital",
+    "address": "Kanakia Road, Beverly Park, Mira Road East 401107",
+    "location": {
+      "latitude": 19.2835,
+      "longitude": 72.8680
+    },
+    "emergency_contact": "022-28551212",
+    "icu_beds_available": 3,
+    "has_trauma_center": false
+  },
+  {
+    "id": "HOSP-005",
+    "name": "Kanakia Emergency Medical Care Post",
+    "address": "Kanakia Park Sector 3, Beverly Park Road, Mira Road 401107",
+    "location": {
+      "latitude": 19.2867,
+      "longitude": 72.8715
+    },
+    "emergency_contact": "022-28120199",
+    "icu_beds_available": 3,
+    "has_trauma_center": false
+  }
+]

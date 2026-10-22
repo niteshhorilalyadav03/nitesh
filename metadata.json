@@ -1,0 +1,8 @@
+{
+  "name": "Remix Lifeline: Smart Emergency Ambulance Dispatch \u0026 Routing System",
+  "description": "Smart emergency ambulance dispatch and routing system for Mira Road, Mumbai with real-time location-based nearest ambulance assignment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

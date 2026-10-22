@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lifeline | Smart Emergency Ambulance Dispatch & Routing System</title>
+    <meta name="description" content="Intelligent emergency response and nearest ambulance dispatch system stationed around Mira Road, Mumbai." />
+    <meta property="og:title" content="Lifeline | Smart Emergency Ambulance Dispatch & Routing System" />
+    <meta property="og:description" content="Intelligent emergency response and nearest ambulance dispatch system stationed around Mira Road, Mumbai." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script>
+      // Suppress unhandled WebSocket / Vite HMR connection errors in iframe environment
+      window.addEventListener('error', function (event) {
+        if (
+          event.message &&
+          (event.message.includes('WebSocket') ||
+            event.message.includes('@vite/client') ||
+            event.message.includes('createWebSocketModuleRunnerTransport'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event.reason ? String(event.reason) : '';
+        if (
+          reason.includes('WebSocket') ||
+          reason.includes('@vite/client') ||
+          reason.includes('createWebSocketModuleRunnerTransport')
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

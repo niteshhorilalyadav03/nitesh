@@ -1,0 +1,126 @@
+[
+  {
+    "id": "AMB-001",
+    "vehicle_number": "MH-04-AZ-1024",
+    "driver_name": "Ramesh Pawar",
+    "contact": "+91 98201 12345",
+    "status": "busy",
+    "current_location": {
+      "latitude": 19.2815,
+      "longitude": 72.8558,
+      "landmark": "Mira Road Railway Station (East)"
+    },
+    "type": "Advanced Life Support",
+    "equipment": [
+      "Ventilator",
+      "Defibrillator",
+      "Oxygen Cylinder",
+      "ECG Monitor"
+    ],
+    "base_station": "Mira Road Station Hub",
+    "fuel_level": "88%"
+  },
+  {
+    "id": "AMB-002",
+    "vehicle_number": "MH-04-BY-4590",
+    "driver_name": "Sunil Sharma",
+    "contact": "+91 98332 54321",
+    "status": "available",
+    "current_location": {
+      "latitude": 19.2903,
+      "longitude": 72.8624,
+      "landmark": "Near Bhaktivedanta Hospital, Sector 1"
+    },
+    "type": "Advanced Life Support",
+    "equipment": [
+      "Ventilator",
+      "Defibrillator",
+      "Oxygen Cylinder",
+      "Suction Unit"
+    ],
+    "base_station": "Shanti Nagar Emergency Unit",
+    "fuel_level": "94%"
+  },
+  {
+    "id": "AMB-003",
+    "vehicle_number": "MH-04-CX-8812",
+    "driver_name": "Mahesh Patil",
+    "contact": "+91 97690 98765",
+    "status": "available",
+    "current_location": {
+      "latitude": 19.2985,
+      "longitude": 72.8532,
+      "landmark": "Golden Nest Circle, Mira-Bhayandar Link Rd"
+    },
+    "type": "Basic",
+    "equipment": [
+      "First Aid Kit",
+      "Stretcher",
+      "Oxygen Cylinder",
+      "BP Apparatus"
+    ],
+    "base_station": "Golden Nest Station",
+    "fuel_level": "76%"
+  },
+  {
+    "id": "AMB-004",
+    "vehicle_number": "MH-04-DT-3341",
+    "driver_name": "Santosh Yadav",
+    "contact": "+91 98195 24680",
+    "status": "busy",
+    "current_location": {
+      "latitude": 19.2867,
+      "longitude": 72.8715,
+      "landmark": "Kanakia Park Sector 3, Mira Road"
+    },
+    "type": "Basic",
+    "equipment": [
+      "First Aid Kit",
+      "Stretcher",
+      "Oxygen Cylinder"
+    ],
+    "base_station": "Kanakia Road Outpost",
+    "fuel_level": "62%"
+  },
+  {
+    "id": "AMB-005",
+    "vehicle_number": "MH-04-EK-9901",
+    "driver_name": "Vikram Singh",
+    "contact": "+91 99204 11223",
+    "status": "available",
+    "current_location": {
+      "latitude": 19.2718,
+      "longitude": 72.8752,
+      "landmark": "Silver Park / Kashimira Western Express Highway"
+    },
+    "type": "Advanced Life Support",
+    "equipment": [
+      "Ventilator",
+      "Defibrillator",
+      "Trauma Kit",
+      "Telemetry"
+    ],
+    "base_station": "Kashimira Highway Rapid Response",
+    "fuel_level": "91%"
+  },
+  {
+    "id": "AMB-006",
+    "vehicle_number": "MH-04-FQ-2144",
+    "driver_name": "Imran Shaikh",
+    "contact": "+91 98920 67890",
+    "status": "busy",
+    "current_location": {
+      "latitude": 19.2842,
+      "longitude": 72.8675,
+      "landmark": "Beverly Park, Kanakia Spaces"
+    },
+    "type": "Neonatal / Pediatric ALS",
+    "equipment": [
+      "Infant Incubator",
+      "Pediatric Resuscitator",
+      "Oxygen Unit"
+    ],
+    "base_station": "Beverly Park Center",
+    "fuel_level": "80%"
+  }
+]
