@@ -298,12 +298,20 @@ export interface EmergencyRequest {
   priority: 'Critical (P1)' | 'Urgent (P2)' | 'Standard (P3)';
   timestamp: string;
   receivedAtMs: number;
-  status: 'pending' | 'assigned' | 'completed' | 'cancelled';
+  status: 'pending' | 'assigned' | 'dispatched' | 'at-scene' | 'transporting' | 'completed' | 'cancelled';
   assignedAmbulanceId?: string;
   assignedAmbulancePlate?: string;
+  driverName?: string;
+  driverContact?: string;
   targetHospitalId?: string;
+  targetHospitalName?: string;
+  distanceKm?: number;
+  etaMinutes?: number;
+  createdAtIso?: string;
+  updatedAtIso?: string;
   notes?: string;
   vitalsReported?: string;
+  vitalsJson?: string;
 }
 
 export type NotificationType = 'emergency' | 'status' | 'success' | 'warning' | 'info';

@@ -42,7 +42,18 @@ import {
   Sparkles,
   MapPin,
   Clock,
-  Filter
+  Filter,
+  Flame,
+  AlertTriangle,
+  Navigation,
+  Play,
+  History,
+  Calendar,
+  CalendarRange,
+  Download,
+  FileText,
+  RotateCcw,
+  SlidersHorizontal
 } from 'lucide-react';
 
 export const AdminDash: React.FC = () => {
@@ -50,6 +61,13 @@ export const AdminDash: React.FC = () => {
     users,
     ambulances,
     hospitals,
+    emergencyRequests,
+    activeMission,
+    triggerDispatch,
+    assignEmergencyRequest,
+    resolveEmergencyRequest,
+    updateMissionStatus,
+    cancelEmergency,
     addUser,
     updateUser,
     deleteUser,
@@ -65,11 +83,21 @@ export const AdminDash: React.FC = () => {
     refreshUsersFromDb
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'fleet' | 'hospitals'>('users');
+  const [activeTab, setActiveTab] = useState<'emergencies' | 'history' | 'users' | 'fleet' | 'hospitals'>('emergencies');
   const [userTableSubTab, setUserTableSubTab] = useState<
     'all' | 'Citizen' | 'Ambulance Operator' | 'Healthcare Coordinator' | 'Emergency Coordinator' | 'Platform Administrator'
   >('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Historical Log Filters & Forensic Audit State
+  const [historyDatePreset, setHistoryDatePreset] = useState<'all' | 'today' | '7days' | '30days' | 'custom'>('all');
+  const [historyDateFrom, setHistoryDateFrom] = useState('');
+  const [historyDateTo, setHistoryDateTo] = useState('');
+  const [historyRegion, setHistoryRegion] = useState('all');
+  const [historyStatus, setHistoryStatus] = useState('all');
+  const [historyPriority, setHistoryPriority] = useState('all');
+  const [historySearch, setHistorySearch] = useState('');
+  const [selectedAuditLog, setSelectedAuditLog] = useState<any | null>(null);
 
   // Modals state
   const [showUserModal, setShowUserModal] = useState(false);
@@ -457,52 +485,341 @@ export const AdminDash: React.FC = () => {
   const adminUsers = users.filter(u => (normalizeRole(u.role) === 'Platform Administrator') && filterBySearch(u));
 
   const availableUnits = ambulances.filter(a => a.status === 'available').length;
+  const busyUnits = ambulances.filter(a => a.status === 'busy').length;
   const totalBeds = hospitals.reduce((acc, h) => acc + (h.icu_beds_available || 0), 0);
+  const activeEmergencies = emergencyRequests.filter(e => e.status !== 'completed' && e.status !== 'cancelled');
+
+  // =========================================================================
+  // HISTORICAL LOGS FILTERING & REGIONAL CAD TELEMETRY HELPERS
+  // =========================================================================
+  const matchesRegion = (locationLandmark: string, selectedSector: string): boolean => {
+    if (!selectedSector || selectedSector === 'all') return true;
+    const l = (locationLandmark || '').toLowerCase();
+    const s = selectedSector.toLowerCase();
+    if (s === 'shanti park') return l.includes('shanti park');
+    if (s === 'kanakia hub') return l.includes('kanakia') || l.includes('cinemax');
+    if (s === 'srishti complex') return l.includes('srishti') || l.includes('royal college');
+    if (s === 'beverly park') return l.includes('beverly park');
+    if (s === 'poonam sagar') return l.includes('poonam sagar');
+    if (s === 'western express hwy / kashimira') return l.includes('highway') || l.includes('kashimira') || l.includes('weh');
+    if (s === 'mira road station area') return l.includes('station') || l.includes('railway');
+    if (s === 'golden nest') return l.includes('golden nest');
+    if (s === 'sheetal nagar') return l.includes('sheetal nagar');
+    if (s === 'silver park / pleasant park') return l.includes('silver park') || l.includes('pleasant park') || l.includes('jangid');
+    if (s === 'naya nagar (west)') return l.includes('naya nagar') || l.includes('west');
+    return l.includes(s);
+  };
+
+  const getSectorFromLandmark = (landmark: string): string => {
+    const l = (landmark || '').toLowerCase();
+    if (l.includes('shanti park')) return 'Shanti Park';
+    if (l.includes('kanakia') || l.includes('cinemax')) return 'Kanakia Hub';
+    if (l.includes('srishti') || l.includes('royal college')) return 'Srishti Complex';
+    if (l.includes('beverly park')) return 'Beverly Park';
+    if (l.includes('poonam sagar')) return 'Poonam Sagar';
+    if (l.includes('kashimira') || l.includes('highway') || l.includes('weh')) return 'Western Express Hwy';
+    if (l.includes('station') || l.includes('railway')) return 'Station Hub';
+    if (l.includes('golden nest')) return 'Golden Nest';
+    if (l.includes('sheetal nagar')) return 'Sheetal Nagar';
+    if (l.includes('silver park') || l.includes('pleasant park') || l.includes('jangid')) return 'Silver / Pleasant Park';
+    if (l.includes('naya nagar')) return 'Naya Nagar (West)';
+    return 'Mira Road';
+  };
+
+  const formatIncidentDateTime = (req: any) => {
+    const iso = req.createdAtIso;
+    const ms = req.receivedAtMs;
+    const validDate = iso ? new Date(iso) : (ms ? new Date(ms) : null);
+    if (validDate && !isNaN(validDate.getTime())) {
+      return {
+        dateStr: validDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        timeStr: validDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        relative: req.timestamp || 'Recorded'
+      };
+    }
+    return {
+      dateStr: 'Recent Call',
+      timeStr: req.timestamp || 'N/A',
+      relative: req.timestamp || 'N/A'
+    };
+  };
+
+  const filteredHistoricalCalls = emergencyRequests.filter(item => {
+    // 1. Status Filter
+    if (historyStatus !== 'all') {
+      if (historyStatus === 'completed' && item.status !== 'completed') return false;
+      if (historyStatus === 'cancelled' && item.status !== 'cancelled') return false;
+      if (historyStatus === 'dispatched' && item.status !== 'dispatched' && item.status !== 'assigned') return false;
+      if (historyStatus === 'at-scene' && item.status !== 'at-scene') return false;
+      if (historyStatus === 'transporting' && item.status !== 'transporting') return false;
+      if (historyStatus === 'pending' && item.status !== 'pending') return false;
+    }
+
+    // 2. Priority Filter
+    if (historyPriority !== 'all' && item.priority !== historyPriority) {
+      return false;
+    }
+
+    // 3. Region Filter
+    if (!matchesRegion(item.location?.landmark || '', historyRegion)) {
+      return false;
+    }
+
+    // 4. Date Filter
+    const timestampMs = item.receivedAtMs || (item.createdAtIso ? new Date(item.createdAtIso).getTime() : 0);
+    const itemDateStr = item.createdAtIso
+      ? item.createdAtIso.split('T')[0]
+      : (timestampMs ? new Date(timestampMs).toISOString().split('T')[0] : '');
+
+    const now = Date.now();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (historyDatePreset === 'today') {
+      if (itemDateStr !== todayStr) return false;
+    } else if (historyDatePreset === '7days') {
+      if (timestampMs && now - timestampMs > 7 * 24 * 60 * 60 * 1000) return false;
+    } else if (historyDatePreset === '30days') {
+      if (timestampMs && now - timestampMs > 30 * 24 * 60 * 60 * 1000) return false;
+    } else if (historyDatePreset === 'custom') {
+      if (historyDateFrom && itemDateStr && itemDateStr < historyDateFrom) return false;
+      if (historyDateTo && itemDateStr && itemDateStr > historyDateTo) return false;
+    }
+
+    // 5. Search Filter
+    if (historySearch.trim()) {
+      const q = historySearch.toLowerCase().trim();
+      const match =
+        item.id.toLowerCase().includes(q) ||
+        (item.callerName || '').toLowerCase().includes(q) ||
+        (item.callerPhone || '').includes(q) ||
+        (item.emergencyType || '').toLowerCase().includes(q) ||
+        (item.location?.landmark || '').toLowerCase().includes(q) ||
+        (item.assignedAmbulancePlate || '').toLowerCase().includes(q) ||
+        (item.driverName || '').toLowerCase().includes(q) ||
+        (item.targetHospitalName || '').toLowerCase().includes(q) ||
+        (item.notes || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+
+    return true;
+  });
+
+  const histCompletedCount = filteredHistoricalCalls.filter(c => c.status === 'completed').length;
+  const histCompletionRate = filteredHistoricalCalls.length > 0
+    ? Math.round((histCompletedCount / filteredHistoricalCalls.length) * 100)
+    : 0;
+  const histCriticalP1Count = filteredHistoricalCalls.filter(c => c.priority === 'Critical (P1)').length;
+  const histWithEta = filteredHistoricalCalls.filter(c => c.etaMinutes && c.etaMinutes > 0);
+  const histAvgEta = histWithEta.length > 0
+    ? (histWithEta.reduce((sum, c) => sum + (c.etaMinutes || 0), 0) / histWithEta.length).toFixed(1)
+    : '4.2';
+  const histActiveCount = filteredHistoricalCalls.filter(c => c.status !== 'completed' && c.status !== 'cancelled').length;
+
+  const handleResetHistoryFilters = () => {
+    setHistoryDatePreset('all');
+    setHistoryDateFrom('');
+    setHistoryDateTo('');
+    setHistoryRegion('all');
+    setHistoryStatus('all');
+    setHistoryPriority('all');
+    setHistorySearch('');
+    showAlert('Historical log filters reset to default view.');
+  };
+
+  const handleExportCSV = () => {
+    if (filteredHistoricalCalls.length === 0) {
+      showAlert('No historical emergency calls to export matching current filters.');
+      return;
+    }
+
+    const headers = [
+      'Incident ID',
+      'Date & Time',
+      'Citizen Caller',
+      'Contact Phone',
+      'Triage Priority',
+      'Emergency Condition',
+      'Region Sector',
+      'Location Landmark',
+      'Assigned Unit',
+      'Paramedic Driver',
+      'Driver Phone',
+      'Destination Hospital',
+      'Distance (km)',
+      'Turnaround ETA (mins)',
+      'Status',
+      'Clinical Notes'
+    ];
+
+    const rows = filteredHistoricalCalls.map(c => [
+      `"${c.id}"`,
+      `"${c.createdAtIso ? new Date(c.createdAtIso).toLocaleString() : c.timestamp}"`,
+      `"${(c.callerName || '').replace(/"/g, '""')}"`,
+      `"${c.callerPhone || ''}"`,
+      `"${c.priority || ''}"`,
+      `"${(c.emergencyType || '').replace(/"/g, '""')}"`,
+      `"${getSectorFromLandmark(c.location?.landmark || '')}"`,
+      `"${(c.location?.landmark || '').replace(/"/g, '""')}"`,
+      `"${c.assignedAmbulancePlate || 'N/A'}"`,
+      `"${c.driverName || 'N/A'}"`,
+      `"${c.driverContact || 'N/A'}"`,
+      `"${(c.targetHospitalName || 'N/A').replace(/"/g, '""')}"`,
+      `"${c.distanceKm ?? 'N/A'}"`,
+      `"${c.etaMinutes ?? 'N/A'}"`,
+      `"${(c.status || '').toUpperCase()}"`,
+      `"${(c.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `lifeline_cad_historical_emergencies_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert(`Exported ${filteredHistoricalCalls.length} emergency call records to CSV.`);
+  };
+
+  const handleExportJSON = () => {
+    if (filteredHistoricalCalls.length === 0) {
+      showAlert('No historical emergency calls to export matching current filters.');
+      return;
+    }
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredHistoricalCalls, null, 2));
+    const link = document.createElement('a');
+    link.setAttribute('href', dataStr);
+    link.setAttribute('download', `lifeline_cad_historical_emergencies_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert(`Exported ${filteredHistoricalCalls.length} emergency call records to JSON.`);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Admin Summary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+      {/* Top Admin Summary Metrics (6 Critical Telemetry Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+        {/* Active Emergencies / Live SOS Radar Card */}
+        <div
+          onClick={() => setActiveTab('emergencies')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            activeTab === 'emergencies'
+              ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-400 shadow-rose-200'
+              : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
+          }`}
+        >
           <div>
-            <p className="text-xs uppercase font-bold text-slate-500">System Users</p>
-            <p className="text-2xl font-black text-slate-900 mt-1">{users.length}</p>
-            <p className="text-[11px] text-slate-400">Across 5 distinct roles</p>
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${activeEmergencies.length > 0 || activeMission ? 'bg-white animate-ping' : 'bg-emerald-500'}`} />
+              <p className={`text-xs uppercase font-bold ${activeTab === 'emergencies' ? 'text-rose-100' : 'text-slate-500'}`}>
+                Active SOS / CAD
+              </p>
+            </div>
+            <p className="text-2xl font-black mt-1 font-mono">
+              {activeEmergencies.length + (activeMission && !activeEmergencies.some(e => e.id.includes(activeMission.id.replace('MSN-', ''))) ? 1 : 0)}
+            </p>
+            <p className={`text-[11px] font-semibold ${activeTab === 'emergencies' ? 'text-rose-100' : 'text-emerald-600'}`}>
+              {activeEmergencies.length > 0 ? 'Live Incidents Tracking' : 'All Clear / Standby'}
+            </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            activeTab === 'emergencies' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-600'
+          }`}>
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Historical SOS Log Card */}
+        <div
+          onClick={() => setActiveTab('history')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            activeTab === 'history'
+              ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-400 shadow-blue-200'
+              : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <div>
+            <p className={`text-xs uppercase font-bold ${activeTab === 'history' ? 'text-blue-100' : 'text-slate-500'}`}>Historical Logs</p>
+            <p className="text-2xl font-black mt-1 font-mono">{emergencyRequests.length}</p>
+            <p className={`text-[11px] font-semibold ${activeTab === 'history' ? 'text-blue-100' : 'text-blue-600'}`}>
+              Filter & Forensic Audit
+            </p>
+          </div>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'
+          }`}>
+            <History className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* System Directory Card */}
+        <div
+          onClick={() => setActiveTab('users')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            activeTab === 'users' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <div>
+            <p className={`text-xs uppercase font-bold ${activeTab === 'users' ? 'text-slate-300' : 'text-slate-500'}`}>System Directory</p>
+            <p className="text-2xl font-black mt-1 font-mono">{users.length}</p>
+            <p className={`text-[11px] ${activeTab === 'users' ? 'text-blue-300' : 'text-slate-400'}`}>5 Categorized Roles</p>
+          </div>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            activeTab === 'users' ? 'bg-white/10 text-white' : 'bg-purple-50 text-purple-600'
+          }`}>
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        {/* Ambulance Fleet Card */}
+        <div
+          onClick={() => setActiveTab('fleet')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            activeTab === 'fleet' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
+          }`}
+        >
           <div>
-            <p className="text-xs uppercase font-bold text-slate-500">Fleet Units</p>
-            <p className="text-2xl font-black text-slate-900 mt-1">{ambulances.length}</p>
-            <p className="text-[11px] text-emerald-600 font-semibold">{availableUnits} Available</p>
+            <p className={`text-xs uppercase font-bold ${activeTab === 'fleet' ? 'text-slate-300' : 'text-slate-500'}`}>Ambulance Fleet</p>
+            <p className="text-2xl font-black mt-1 font-mono">{ambulances.length}</p>
+            <p className={`text-[11px] font-semibold ${busyUnits > 0 ? 'text-amber-500' : 'text-emerald-600'}`}>
+              {availableUnits} Idle • {busyUnits} On Run
+            </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            activeTab === 'fleet' ? 'bg-white/10 text-white' : 'bg-blue-50 text-blue-600'
+          }`}>
             <Siren className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        {/* Trauma Centers Card */}
+        <div
+          onClick={() => setActiveTab('hospitals')}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            activeTab === 'hospitals' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
+          }`}
+        >
           <div>
-            <p className="text-xs uppercase font-bold text-slate-500">Hospital Centers</p>
-            <p className="text-2xl font-black text-slate-900 mt-1">{hospitals.length}</p>
-            <p className="text-[11px] text-slate-400">Partner Facilities</p>
+            <p className={`text-xs uppercase font-bold ${activeTab === 'hospitals' ? 'text-slate-300' : 'text-slate-500'}`}>Trauma Centers</p>
+            <p className="text-2xl font-black mt-1 font-mono">{hospitals.length}</p>
+            <p className={`text-[11px] ${activeTab === 'hospitals' ? 'text-slate-300' : 'text-slate-400'}`}>Partner Facilities</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            activeTab === 'hospitals' ? 'bg-white/10 text-white' : 'bg-rose-50 text-rose-600'
+          }`}>
             <Building2 className="w-5 h-5" />
           </div>
         </div>
 
+        {/* ICU Bed Reserve Card */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs uppercase font-bold text-slate-500">ICU Bed Reserve</p>
-            <p className="text-2xl font-black text-emerald-700 mt-1">{totalBeds}</p>
-            <p className="text-[11px] text-slate-400">Total Available Beds</p>
+            <p className="text-2xl font-black text-emerald-700 mt-1 font-mono">{totalBeds}</p>
+            <p className="text-[11px] text-emerald-600 font-semibold">Mira Road Trauma Ready</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <Activity className="w-5 h-5" />
           </div>
         </div>
@@ -571,21 +888,48 @@ export const AdminDash: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {/* Navigation & Search Bar */}
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
-          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs font-semibold flex-wrap">
+            <button
+              onClick={() => setActiveTab('emergencies')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'emergencies'
+                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50/50'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 text-rose-300" />
+              <span>Live CAD Radar ({activeEmergencies.length})</span>
+              {(activeEmergencies.length > 0 || activeMission) && (
+                <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping ml-0.5" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'history'
+                  ? 'bg-blue-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/50'
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-blue-300" />
+              <span>Historical SOS Logs ({emergencyRequests.length})</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('users')}
               className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'users' ? 'bg-[#0D253F] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'users' ? 'bg-[#0D253F] text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>User Accounts ({users.length})</span>
+              <span>User Directory ({users.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('fleet')}
               className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'fleet' ? 'bg-[#0D253F] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'fleet' ? 'bg-[#0D253F] text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Siren className="w-3.5 h-3.5" />
@@ -595,7 +939,7 @@ export const AdminDash: React.FC = () => {
             <button
               onClick={() => setActiveTab('hospitals')}
               className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'hospitals' ? 'bg-[#0D253F] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'hospitals' ? 'bg-[#0D253F] text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
@@ -623,6 +967,50 @@ export const AdminDash: React.FC = () => {
                 </button>
               )}
             </div>
+
+            {activeTab === 'history' && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                  title="Export filtered records to CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportJSON}
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                  title="Export filtered records as JSON"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>JSON</span>
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'emergencies' && (
+              <button
+                onClick={async () => {
+                  showAlert('Simulating critical Citizen SOS beacon from Mira Road...');
+                  await triggerDispatch(
+                    19.2890,
+                    72.8610,
+                    'Acute Cardiac Emergency / Severe Chest Pain',
+                    'Meera Sharma',
+                    '9892088776',
+                    'Flat 402, Shanti Park Sector 5, Mira Road East'
+                  );
+                }}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer active:scale-95 animate-pulse"
+                title="Trigger automated dispatch for citizen"
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>+ Simulate Citizen SOS</span>
+              </button>
+            )}
 
             {activeTab === 'users' && (
               <button
@@ -660,7 +1048,850 @@ export const AdminDash: React.FC = () => {
         </div>
 
         {/* ================================================================== */}
-        {/* TAB 1: USERS SECTION WITH DEDICATED SEPARATE TABLES                */}
+        {/* TAB 0: LIVE CAD RADAR & REAL-TIME CITIZEN SOS INCIDENTS           */}
+        {/* ================================================================== */}
+        {activeTab === 'emergencies' && (
+          <div className="p-4 sm:p-5 space-y-6">
+            {/* Live Active Mission Banner (if active) */}
+            {activeMission && (
+              <div className="bg-gradient-to-r from-[#0B1E36] via-[#102B4C] to-[#0B1E36] text-white rounded-2xl p-5 border-2 border-rose-500/80 shadow-xl space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
+                    </span>
+                    <span className="text-xs uppercase font-mono font-bold tracking-wider text-rose-300">
+                      LIVE ONGOING DISPATCH MISSION: {activeMission.id}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                      STATUS: {activeMission.status.toUpperCase()}
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Dispatched At {activeMission.dispatchedAt}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  {/* Column 1: Patient / Victim Info */}
+                  <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Victim & Condition</span>
+                    <div>
+                      <h4 className="font-black text-white text-base">{activeMission.patientName}</h4>
+                      <p className="text-rose-300 font-semibold mt-0.5 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{activeMission.emergencyType}</span>
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                      <span className="text-slate-400">Caller Mobile:</span>
+                      <a href={`tel:${activeMission.patientContact}`} className="font-mono font-bold text-blue-300 hover:underline">
+                        +91 {clean10DigitPhone(activeMission.patientContact)}
+                      </a>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Landmark:</span>
+                      <span className="font-semibold text-right max-w-[170px] truncate">{activeMission.emergencyLocation.landmark}</span>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Assigned Ambulance & Driver */}
+                  <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Unit & Driver</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-white text-base font-mono">{activeMission.ambulanceVehicleNumber}</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                          {activeMission.ambulanceType || 'ALS'}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 mt-0.5">
+                        Driver: <strong>{activeMission.driverName}</strong>
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                      <span className="text-slate-400">Driver Phone:</span>
+                      <a href={`tel:${activeMission.driverContact}`} className="font-mono font-bold text-emerald-300 hover:underline">
+                        +91 {clean10DigitPhone(activeMission.driverContact)}
+                      </a>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">ETA / Distance:</span>
+                      <span className="font-mono font-bold text-yellow-300">~{activeMission.etaMinutes} mins ({activeMission.distanceKm} km away)</span>
+                    </div>
+                  </div>
+
+                  {/* Column 3: Destination Hospital & Handover */}
+                  <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Destination Trauma Center</span>
+                    <div>
+                      <h4 className="font-bold text-white text-sm">{activeMission.hospital.name}</h4>
+                      <p className="text-slate-400 text-[11px] truncate">{activeMission.hospital.address}</p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                      <span className="text-slate-400">ICU Bed Reserve:</span>
+                      <span className="font-mono font-bold text-emerald-400">{activeMission.hospital.icu_beds_available} Available</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">ER Hotline:</span>
+                      <span className="font-mono text-blue-300">{activeMission.hospital.emergency_contact}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Administrator Mission Override Actions */}
+                <div className="pt-3 border-t border-slate-700/80 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-slate-300">
+                    Mission Telemetry synced automatically with Driver Cockpit, Citizen App, and Hospital Coordinator.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activeMission.status === 'dispatched' && (
+                      <button
+                        type="button"
+                        onClick={() => updateMissionStatus('at-scene')}
+                        className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                      >
+                        Set: Paramedic At Scene
+                      </button>
+                    )}
+                    {activeMission.status === 'at-scene' && (
+                      <button
+                        type="button"
+                        onClick={() => updateMissionStatus('transporting')}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                      >
+                        Set: In Transit to Hospital
+                      </button>
+                    )}
+                    {activeMission.status === 'transporting' && (
+                      <button
+                        type="button"
+                        onClick={() => updateMissionStatus('completed')}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                      >
+                        Complete Trauma Handover
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => cancelEmergency()}
+                      className="px-3 py-1.5 bg-rose-700/80 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Stand Down / Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Incidents Stream Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-3.5 bg-gradient-to-r from-rose-50/70 via-white to-rose-50/30 border-b border-rose-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
+                    <Radio className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-sm">Emergency Calls & CAD Dispatch Queue</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                        {emergencyRequests.length} Total Incidents
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Real-time log of citizen SOS triggers, automated nearest unit dispatch, and hospital transfers in Mira Road
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      showAlert('Simulating critical Citizen SOS beacon from Mira Road...');
+                      await triggerDispatch(
+                        19.2890,
+                        72.8610,
+                        'Acute Cardiac Emergency / Severe Chest Pain',
+                        'Meera Sharma',
+                        '9892088776',
+                        'Flat 402, Shanti Park Sector 5, Mira Road East'
+                      );
+                    }}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Flame className="w-3.5 h-3.5" />
+                    <span>+ Trigger Test SOS Call</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-rose-50/40 text-[11px] uppercase font-bold text-slate-500 border-b border-rose-100">
+                    <tr>
+                      <th className="px-4 py-3">Incident ID & Time</th>
+                      <th className="px-4 py-3">Citizen / Victim</th>
+                      <th className="px-4 py-3">Contact</th>
+                      <th className="px-4 py-3">Emergency Type & Priority</th>
+                      <th className="px-4 py-3">GPS Landmark</th>
+                      <th className="px-4 py-3">Assigned Unit</th>
+                      <th className="px-4 py-3">Current Status</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {emergencyRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                          No emergency calls recorded in CAD queue. All units standby.
+                        </td>
+                      </tr>
+                    ) : (
+                      emergencyRequests.map(req => {
+                        const isPending = req.status === 'pending';
+                        const isAssigned = req.status === 'assigned' || (req.status as string) === 'dispatched';
+                        const isCompleted = req.status === 'completed';
+
+                        return (
+                          <tr key={req.id} className="hover:bg-rose-50/20 transition-colors">
+                            <td className="px-4 py-3 font-mono">
+                              <span className="font-bold text-slate-900 block">{req.id}</span>
+                              <span className="text-[10px] text-slate-400">{req.timestamp}</span>
+                            </td>
+                            <td className="px-4 py-3 font-bold text-slate-900">
+                              {req.callerName}
+                            </td>
+                            <td className="px-4 py-3">
+                              <a
+                                href={`tel:${req.callerPhone}`}
+                                className="font-mono text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                <Phone className="w-3 h-3 text-slate-400" />
+                                <span>+91 {clean10DigitPhone(req.callerPhone)}</span>
+                              </a>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-slate-900">{req.emergencyType}</p>
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5 ${
+                                req.priority.includes('Critical') || req.priority.includes('P1')
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {req.priority}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              <span className="text-[11px] truncate block max-w-[170px]" title={req.location.landmark}>
+                                {req.location.landmark}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {req.assignedAmbulancePlate ? (
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                  {req.assignedAmbulancePlate}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">Unassigned</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isPending
+                                  ? 'bg-amber-100 text-amber-800 animate-pulse'
+                                  : isAssigned
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : isCompleted
+                                  ? 'bg-slate-100 text-slate-700'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                {req.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isPending ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => assignEmergencyRequest(req.id)}
+                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                                  >
+                                    Dispatch Unit
+                                  </button>
+                                ) : !isCompleted ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => resolveEmergencyRequest(req.id)}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                                  >
+                                    Resolve
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-semibold">Concluded</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB 1: HISTORICAL EMERGENCY & SOS CALL LOGS (AUDIT & TELEMETRY)   */}
+        {/* ================================================================== */}
+        {activeTab === 'history' && (
+          <div className="p-4 sm:p-5 space-y-6">
+            {/* Header & Overview Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl p-5 border border-blue-500/30 shadow-md flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0 mt-0.5">
+                  <History className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                      Historical SOS & Emergency Incident Call Logs
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      CAD FORENSIC ARCHIVE
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                    Search and filter historical emergency calls across Mira Road sectors, dates, clinical triage priorities, and dispatch outcomes with full telemetry audits.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportJSON}
+                  className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>JSON Telemetry</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Comprehensive Multi-Dimensional Filter Toolbar */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs uppercase font-bold text-slate-700 tracking-wider">
+                    Emergency Call Filter Engine
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    ({filteredHistoricalCalls.length} matching of {emergencyRequests.length} recorded)
+                  </span>
+                </div>
+
+                {(historyDatePreset !== 'all' || historyRegion !== 'all' || historyStatus !== 'all' || historyPriority !== 'all' || historySearch.trim() || historyDateFrom || historyDateTo) && (
+                  <button
+                    type="button"
+                    onClick={handleResetHistoryFilters}
+                    className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset All Filters</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 1. Date Range Preset Chips & Custom Date Picker */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    <span>1. Date Range Filter</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">Preset or manual calendar range</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryDatePreset('all');
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      historyDatePreset === 'all'
+                        ? 'bg-blue-600 text-white shadow-xs font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    All Time
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryDatePreset('today');
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      historyDatePreset === 'today'
+                        ? 'bg-blue-600 text-white shadow-xs font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Today
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryDatePreset('7days');
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      historyDatePreset === '7days'
+                        ? 'bg-blue-600 text-white shadow-xs font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Last 7 Days
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryDatePreset('30days');
+                      setHistoryDateFrom('');
+                      setHistoryDateTo('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      historyDatePreset === '30days'
+                        ? 'bg-blue-600 text-white shadow-xs font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Last 30 Days
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHistoryDatePreset('custom')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      historyDatePreset === 'custom'
+                        ? 'bg-blue-600 text-white shadow-xs font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Custom Range
+                  </button>
+
+                  {/* Manual Date Inputs */}
+                  <div className="flex items-center gap-2 pl-2 sm:border-l border-slate-200">
+                    <div className="flex items-center gap-1 text-xs text-slate-600">
+                      <span className="text-[11px] font-semibold text-slate-400">From:</span>
+                      <input
+                        type="date"
+                        value={historyDateFrom}
+                        onChange={(e) => {
+                          setHistoryDateFrom(e.target.value);
+                          setHistoryDatePreset('custom');
+                        }}
+                        className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-slate-600">
+                      <span className="text-[11px] font-semibold text-slate-400">To:</span>
+                      <input
+                        type="date"
+                        value={historyDateTo}
+                        onChange={(e) => {
+                          setHistoryDateTo(e.target.value);
+                          setHistoryDatePreset('custom');
+                        }}
+                        className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Region, Status & Priority Dropdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                {/* Region / Sector Filter */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                    <span>2. Region / Sector</span>
+                  </label>
+                  <select
+                    value={historyRegion}
+                    onChange={(e) => setHistoryRegion(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="all">🌐 All Mira Road Sectors</option>
+                    <option value="Shanti Park">📍 Shanti Park (Sector 5 & Jain Temple)</option>
+                    <option value="Kanakia Hub">📍 Kanakia Hub (Cinemax & Beverly Park Road)</option>
+                    <option value="Srishti Complex">📍 Srishti Complex (Bhaktivedanta & Royal College)</option>
+                    <option value="Beverly Park">📍 Beverly Park (Near Brand Factory)</option>
+                    <option value="Poonam Sagar">📍 Poonam Sagar Complex (Sector 2)</option>
+                    <option value="Western Express Hwy / Kashimira">📍 Western Express Hwy / Kashimira</option>
+                    <option value="Mira Road Station Area">📍 Station Area (East & West Stands)</option>
+                    <option value="Golden Nest">📍 Golden Nest Circle (Bhayandar Road)</option>
+                    <option value="Sheetal Nagar">📍 Sheetal Nagar (Sector 2, MTNL Office)</option>
+                    <option value="Silver Park / Pleasant Park">📍 Silver Park & Pleasant Park Corridor</option>
+                    <option value="Naya Nagar (West)">📍 Naya Nagar (Mira Road West)</option>
+                  </select>
+                </div>
+
+                {/* Lifecycle Status Filter */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>3. Incident Status</span>
+                  </label>
+                  <select
+                    value={historyStatus}
+                    onChange={(e) => setHistoryStatus(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="all">⚡ All Statuses</option>
+                    <option value="completed">✅ Completed & Handed Over</option>
+                    <option value="cancelled">🚫 Cancelled / Aborted</option>
+                    <option value="dispatched">🚑 Dispatched & En Route</option>
+                    <option value="at-scene">🩺 At Scene (Paramedics On-Site)</option>
+                    <option value="transporting">🏥 Transporting (In Transit)</option>
+                    <option value="pending">⏳ Pending CAD Triage</option>
+                  </select>
+                </div>
+
+                {/* Priority Triage Filter */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-500" />
+                    <span>4. Triage Priority</span>
+                  </label>
+                  <select
+                    value={historyPriority}
+                    onChange={(e) => setHistoryPriority(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="all">🎯 All Priorities (P1 / P2 / P3)</option>
+                    <option value="Critical (P1)">🔴 Critical (P1) - Immediate Threat</option>
+                    <option value="Urgent (P2)">🟡 Urgent (P2) - Severe Condition</option>
+                    <option value="Standard (P3)">🔵 Standard (P3) - Stable Transport</option>
+                  </select>
+                </div>
+
+                {/* Freeform Search Filter */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-blue-600" />
+                    <span>5. Text Search</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      placeholder="Caller, phone, vehicle, condition..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    {historySearch && (
+                      <button
+                        type="button"
+                        onClick={() => setHistorySearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filtered Results Analytics KPI Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Filtered Incidents</span>
+                <p className="text-2xl font-black text-slate-900 mt-0.5 font-mono">
+                  {filteredHistoricalCalls.length}
+                </p>
+                <p className="text-[11px] text-slate-500 font-medium">Matching Active Filters</p>
+              </div>
+
+              <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">Resolution Rate</span>
+                <p className="text-2xl font-black text-emerald-700 mt-0.5 font-mono">
+                  {histCompletionRate}%
+                </p>
+                <p className="text-[11px] text-emerald-800 font-medium">{histCompletedCount} Successfully Handed Over</p>
+              </div>
+
+              <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-rose-800 tracking-wider">High Acuity (P1)</span>
+                <p className="text-2xl font-black text-rose-700 mt-0.5 font-mono">
+                  {histCriticalP1Count}
+                </p>
+                <p className="text-[11px] text-rose-800 font-medium">Immediate Life Threat Cases</p>
+              </div>
+
+              <div className="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Avg Dispatch Response</span>
+                <p className="text-2xl font-black text-blue-700 mt-0.5 font-mono">
+                  ~{histAvgEta}m
+                </p>
+                <p className="text-[11px] text-blue-800 font-medium">Turnaround Arrival Time</p>
+              </div>
+
+              <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200 shadow-xs col-span-2 sm:col-span-1">
+                <span className="text-[10px] uppercase font-bold text-purple-800 tracking-wider">Active Missions</span>
+                <p className="text-2xl font-black text-purple-700 mt-0.5 font-mono">
+                  {histActiveCount}
+                </p>
+                <p className="text-[11px] text-purple-800 font-medium">Currently In-Flight / Open</p>
+              </div>
+            </div>
+
+            {/* Historical Emergency Incident Data Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">Emergency Calls Registry</h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">
+                    {filteredHistoricalCalls.length} Incidents
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 flex items-center gap-2">
+                  <span>Sorted by Recency (Latest First)</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3.5">Call ID & Date</th>
+                      <th className="px-4 py-3.5">Citizen / Caller</th>
+                      <th className="px-4 py-3.5">Region & Landmark</th>
+                      <th className="px-4 py-3.5">Condition & Triage</th>
+                      <th className="px-4 py-3.5">Assigned Unit & Driver</th>
+                      <th className="px-4 py-3.5">Hospital Destination</th>
+                      <th className="px-4 py-3.5">Status</th>
+                      <th className="px-4 py-3.5 text-right">Audit & Telemetry</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredHistoricalCalls.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-12 text-center">
+                          <div className="max-w-md mx-auto space-y-3">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                              <Search className="w-6 h-6" />
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-800">No Historical SOS Calls Found</h4>
+                            <p className="text-xs text-slate-500">
+                              No past emergency records match your current date, region, priority, or status filters. Try broadening your criteria.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleResetHistoryFilters}
+                              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Reset All Filters
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredHistoricalCalls.map((req) => {
+                        const { dateStr, timeStr, relative } = formatIncidentDateTime(req);
+                        const sectorBadge = getSectorFromLandmark(req.location?.landmark || '');
+                        const isP1 = req.priority === 'Critical (P1)';
+                        const isP2 = req.priority === 'Urgent (P2)';
+
+                        return (
+                          <tr key={req.id} className="hover:bg-blue-50/20 transition-colors">
+                            {/* 1. Call ID & Date */}
+                            <td className="px-4 py-3.5">
+                              <div className="space-y-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 text-white inline-block">
+                                  {req.id}
+                                </span>
+                                <div className="text-[11px] font-semibold text-slate-800 flex items-center gap-1">
+                                  <Calendar className="w-3 h-3 text-slate-400" />
+                                  <span>{dateStr}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>{timeStr} • {relative}</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. Citizen Caller */}
+                            <td className="px-4 py-3.5">
+                              <div>
+                                <p className="font-bold text-slate-900">{req.callerName}</p>
+                                <a
+                                  href={`tel:${req.callerPhone}`}
+                                  className="font-mono text-[11px] text-blue-600 hover:underline flex items-center gap-1 mt-0.5 font-semibold"
+                                >
+                                  <Phone className="w-3 h-3 text-blue-500" />
+                                  <span>+91 {clean10DigitPhone(req.callerPhone)}</span>
+                                </a>
+                              </div>
+                            </td>
+
+                            {/* 3. Region & Landmark */}
+                            <td className="px-4 py-3.5 max-w-[210px]">
+                              <div className="space-y-1">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 inline-block">
+                                  {sectorBadge}
+                                </span>
+                                <p className="text-[11px] text-slate-700 line-clamp-2" title={req.location?.landmark}>
+                                  {req.location?.landmark || 'Mira Road'}
+                                </p>
+                              </div>
+                            </td>
+
+                            {/* 4. Condition & Triage */}
+                            <td className="px-4 py-3.5 max-w-[220px]">
+                              <div className="space-y-1">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight inline-block ${
+                                    isP1
+                                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                      : isP2
+                                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                                  }`}
+                                >
+                                  {req.priority}
+                                </span>
+                                <p className="text-slate-800 font-semibold text-[11px] leading-snug line-clamp-2">
+                                  {req.emergencyType}
+                                </p>
+                              </div>
+                            </td>
+
+                            {/* 5. Assigned Unit & Driver */}
+                            <td className="px-4 py-3.5">
+                              {req.assignedAmbulancePlate ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1 font-mono font-bold text-slate-900 text-[11px]">
+                                    <Siren className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    <span>{req.assignedAmbulancePlate}</span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 font-medium">
+                                    {req.driverName || 'Paramedic Driver'}
+                                  </p>
+                                  {req.driverContact && (
+                                    <p className="text-[10px] text-slate-400 font-mono">
+                                      +91 {clean10DigitPhone(req.driverContact)}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">Unassigned</span>
+                              )}
+                            </td>
+
+                            {/* 6. Hospital Destination */}
+                            <td className="px-4 py-3.5 max-w-[190px]">
+                              {req.targetHospitalName ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-800">
+                                    <Building2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                    <span className="truncate">{req.targetHospitalName}</span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 font-mono">
+                                    {req.distanceKm ? `${req.distanceKm} km` : '1.8 km'} • ~{req.etaMinutes ? `${req.etaMinutes} mins` : '4 mins'}
+                                  </p>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">Pending Route</span>
+                              )}
+                            </td>
+
+                            {/* 7. Status */}
+                            <td className="px-4 py-3.5">
+                              <span
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono uppercase inline-flex items-center gap-1.5 ${
+                                  req.status === 'completed'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : req.status === 'cancelled'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                    : req.status === 'dispatched' || req.status === 'assigned'
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    : req.status === 'at-scene'
+                                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                    : req.status === 'transporting'
+                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    req.status === 'completed'
+                                      ? 'bg-emerald-600'
+                                      : req.status === 'cancelled'
+                                      ? 'bg-rose-600'
+                                      : 'bg-blue-600 animate-pulse'
+                                  }`}
+                                />
+                                {req.status === 'dispatched' || req.status === 'assigned'
+                                  ? 'EN ROUTE'
+                                  : req.status.toUpperCase()}
+                              </span>
+                            </td>
+
+                            {/* 8. Audit & Inspection Button */}
+                            <td className="px-4 py-3.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAuditLog(req)}
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer ml-auto shadow-xs active:scale-95"
+                                title="Inspect clinical dossier and CAD telemetry"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Audit Details</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB 2: USERS SECTION WITH DEDICATED SEPARATE TABLES                */}
         {/* ================================================================== */}
         {activeTab === 'users' && (
           <div className="p-4 sm:p-5 space-y-6">
@@ -861,7 +2092,30 @@ export const AdminDash: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    showAlert(`Triggering real-time emergency SOS dispatch for citizen ${user.name}...`);
+                                    await triggerDispatch(
+                                      19.2890,
+                                      72.8610,
+                                      user.medicalNotes?.includes('asthma')
+                                        ? 'Severe Asthma Attack / Bronchospasm'
+                                        : user.medicalNotes?.includes('Cardiac') || user.medicalNotes?.includes('Hypertension')
+                                        ? 'Acute Cardiac Emergency / Retrosternal Chest Pain'
+                                        : 'Emergency Ambulance Assistance Required',
+                                      user.name,
+                                      user.phone,
+                                      user.defaultAddress || 'Shanti Park Sector 5, Mira Road'
+                                    );
+                                  }}
+                                  title={`Trigger Live SOS Dispatch for ${user.name}`}
+                                  className="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-bold border border-rose-200 shadow-xs"
+                                >
+                                  <Flame className="w-3.5 h-3.5" />
+                                  <span>SOS</span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => handleStartEditUser(user)}
@@ -2450,6 +3704,240 @@ export const AdminDash: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* HISTORICAL INCIDENT AUDIT & CLINICAL TELEMETRY DOSSIER MODAL        */}
+      {/* ================================================================== */}
+      {selectedAuditLog && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                  <FileText className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
+                      {selectedAuditLog.id}
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
+                        selectedAuditLog.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : selectedAuditLog.status === 'cancelled'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}
+                    >
+                      STATUS: {selectedAuditLog.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg mt-1">
+                    Emergency Call Forensic Telemetry Dossier
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Logged: {selectedAuditLog.createdAtIso || selectedAuditLog.timestamp}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content Sections */}
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 text-xs">
+              {/* Section 1: Victim & Distress Telemetry */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <HeartPulse className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Citizen Distress & Triage Telemetry</span>
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Caller / Patient Name</p>
+                    <p className="font-bold text-slate-900 text-sm">{selectedAuditLog.callerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Registered Contact Phone</p>
+                    <a
+                      href={`tel:${selectedAuditLog.callerPhone}`}
+                      className="font-mono text-blue-600 font-bold hover:underline flex items-center gap-1"
+                    >
+                      <Phone className="w-3 h-3 text-blue-500" />
+                      <span>+91 {clean10DigitPhone(selectedAuditLog.callerPhone)}</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Emergency Condition</p>
+                    <p className="font-bold text-slate-800">{selectedAuditLog.emergencyType}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">CAD Triage Priority</p>
+                    <span
+                      className={`inline-block mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        selectedAuditLog.priority === 'Critical (P1)'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : selectedAuditLog.priority === 'Urgent (P2)'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-blue-100 text-blue-800 border border-blue-300'
+                      }`}
+                    >
+                      {selectedAuditLog.priority}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-1 border-t border-slate-200/60 space-y-1">
+                  <p className="text-[11px] text-slate-400 font-medium">Incident Location & Region</p>
+                  <p className="font-semibold text-slate-800">
+                    {selectedAuditLog.location?.landmark || 'Mira Road'}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap font-mono text-[10px] text-slate-500">
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                      Sector: {getSectorFromLandmark(selectedAuditLog.location?.landmark || '')}
+                    </span>
+                    {selectedAuditLog.location?.latitude && (
+                      <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                        GPS: {selectedAuditLog.location.latitude.toFixed(4)}°N, {selectedAuditLog.location.longitude.toFixed(4)}°E
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Responding Unit & Paramedic Crew */}
+              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+                <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Siren className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Responding Ambulance & EMT Crew</span>
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Assigned Ambulance Unit</p>
+                    <p className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                      <span>{selectedAuditLog.assignedAmbulancePlate || 'Unassigned'}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Primary Paramedic Driver</p>
+                    <p className="font-bold text-slate-900">
+                      {selectedAuditLog.driverName || 'Regional Standby Driver'}
+                    </p>
+                    {selectedAuditLog.driverContact && (
+                      <p className="font-mono text-[11px] text-slate-500 mt-0.5">
+                        +91 {clean10DigitPhone(selectedAuditLog.driverContact)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-blue-100">
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Destination Emergency Ward</p>
+                    <p className="font-bold text-slate-900">
+                      {selectedAuditLog.targetHospitalName || 'Bhaktivedanta Hospital'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 font-medium">Turnaround Metrics</p>
+                    <p className="font-mono text-slate-700 font-bold">
+                      {selectedAuditLog.distanceKm ? `${selectedAuditLog.distanceKm} km distance` : '1.8 km distance'} • ~{selectedAuditLog.etaMinutes ? `${selectedAuditLog.etaMinutes} mins ETA` : '4 mins ETA'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Clinical Vitals Snapshot (if available) */}
+              {selectedAuditLog.vitalsJson && (() => {
+                try {
+                  const v = JSON.parse(selectedAuditLog.vitalsJson);
+                  return (
+                    <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-2.5">
+                      <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Field Clinical Vitals Telemetry (In-Transit)</span>
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">Blood Pressure</p>
+                          <p className="font-mono font-bold text-slate-900 text-xs mt-0.5">{v.bloodPressure || '120/80'}</p>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">Pulse Rate</p>
+                          <p className="font-mono font-bold text-slate-900 text-xs mt-0.5">{v.pulseRate || 82} bpm</p>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">SpO2 Oxygen</p>
+                          <p className="font-mono font-bold text-slate-900 text-xs mt-0.5">{v.spo2 || 98}%</p>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">Body Temp</p>
+                          <p className="font-mono font-bold text-slate-900 text-xs mt-0.5">{v.temperature || '98.4°F'}</p>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-100 col-span-2 sm:col-span-1">
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase">GCS Score</p>
+                          <p className="font-mono font-bold text-slate-900 text-xs mt-0.5">{v.gcsScore || 15} / 15</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } catch (e) {
+                  return null;
+                }
+              })()}
+
+              {/* Section 4: Paramedic Notes & Forensic Log */}
+              {selectedAuditLog.notes && (
+                <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-2">
+                  <span className="text-[10px] font-mono font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Paramedic Field Observations & Clinical Handover Log</span>
+                  </span>
+                  <p className="text-xs text-slate-200 leading-relaxed font-mono">
+                    "{selectedAuditLog.notes}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedAuditLog, null, 2));
+                  showAlert('Copied complete JSON telemetry dossier to clipboard.');
+                }}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Copy Raw Telemetry (JSON)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+              >
+                Close Audit
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -12,7 +12,13 @@ import {
   insertUserInDb,
   updateUserInDb,
   deleteUserFromDb,
-  getDatabaseStats
+  getDatabaseStats,
+  getAllEmergenciesFromDb,
+  getEmergencyByIdFromDb,
+  insertEmergencyInDb,
+  updateEmergencyInDb,
+  deleteEmergencyFromDb,
+  EmergencyRecord
 } from './server/db.ts';
 
 dotenv.config();
@@ -313,19 +319,185 @@ app.post('/api/ambulances/dispatch', (req: Request, res: Response) => {
       distance_km: calculateHaversineDistance(patientLat, patientLon, h.location.latitude, h.location.longitude)
     })).sort((a: any, b: any) => a.distance_km - b.distance_km);
 
+    const recommendedHospital = hospitalsWithDist[0] || null;
+
+    // Automatically persist emergency incident into SQLite database
+    const emergencyId = req.body.id || `EMG-${Date.now().toString().slice(-5)}`;
+    const emergencyRecord: EmergencyRecord = {
+      id: emergencyId,
+      caller_name: patient_name || 'Emergency Victim',
+      caller_phone: String(req.body.patient_contact || req.body.caller_phone || '9892088776').replace(/\D/g, '').slice(-10),
+      emergency_type: emergency_type || 'General Emergency',
+      priority: req.body.priority || 'Critical (P1)',
+      latitude: patientLat,
+      longitude: patientLon,
+      landmark: req.body.landmark || 'Mira Road GPS Landmark',
+      status: 'dispatched',
+      assigned_ambulance_id: selected.id,
+      assigned_ambulance_plate: selected.vehicle_number,
+      driver_name: selected.driver_name,
+      driver_contact: selected.contact,
+      target_hospital_id: recommendedHospital?.id || null,
+      target_hospital_name: recommendedHospital?.name || null,
+      eta_minutes: selected.eta_minutes || 4,
+      distance_km: selected.distance_km || 1.5,
+      vitals_json: req.body.vitals ? JSON.stringify(req.body.vitals) : null,
+      notes: req.body.notes || `Dispatched Unit ${selected.vehicle_number} to ${req.body.landmark || 'incident location'}.`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      insertEmergencyInDb(emergencyRecord);
+    } catch (dbErr) {
+      console.warn('Emergency DB insert fallback:', dbErr);
+    }
+
+    const dispatchPayload = {
+      emergency_location: { latitude: patientLat, longitude: patientLon, landmark: emergencyRecord.landmark },
+      patient_name: patient_name || 'Emergency Victim',
+      patient_contact: emergencyRecord.caller_phone,
+      emergency_type: emergency_type || 'General Emergency',
+      assigned_ambulance: selected,
+      recommended_hospital: recommendedHospital,
+      other_available_units: withDistance.slice(1),
+      mission_id: `MSN-${Date.now().toString().slice(-5)}`,
+      emergency_record: emergencyRecord
+    };
+
+    // BROADCAST INSTANT TELEMETRY ACROSS ALL CONNECTED DASHBOARD TABS
+    // (Admin Dash, Driver Dash, Dispatcher Dash, Hospital Coordinator)
+    broadcastEvent('EMERGENCY_DISPATCHED', dispatchPayload);
+
     res.json({
       success: true,
       message: `Nearest ambulance ${selected.vehicle_number} (${selected.id}) assigned successfully!`,
-      dispatch_result: {
-        emergency_location: { latitude: patientLat, longitude: patientLon },
-        patient_name: patient_name || 'Emergency Victim',
-        emergency_type: emergency_type || 'General Emergency',
-        assigned_ambulance: selected,
-        recommended_hospital: hospitalsWithDist[0] || null,
-        other_available_units: withDistance.slice(1)
-      },
+      dispatch_result: dispatchPayload,
       dispatched_at: new Date().toISOString()
     });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --------------------------------------------------------------------------
+// REST API ROUTES: Real-Time Emergencies & CAD Incident Persistence (SQLite)
+// --------------------------------------------------------------------------
+app.get('/api/emergencies', (_req: Request, res: Response) => {
+  try {
+    const list = getAllEmergenciesFromDb();
+    res.json({
+      success: true,
+      count: list.length,
+      data: list,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/emergencies/:id', (req: Request, res: Response) => {
+  try {
+    const item = getEmergencyByIdFromDb(req.params.id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Emergency not found' });
+    }
+    res.json({ success: true, data: item });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/emergencies', (req: Request, res: Response) => {
+  try {
+    const { caller_name, caller_phone, emergency_type, latitude, longitude, landmark, priority } = req.body;
+    if (!caller_name || !emergency_type || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Caller name, emergency type, latitude, and longitude are required.'
+      });
+    }
+
+    const id = req.body.id || `EMG-${Date.now().toString().slice(-5)}`;
+    const newEmergency: EmergencyRecord = {
+      id,
+      caller_name,
+      caller_phone: String(caller_phone || '9892088776').replace(/\D/g, '').slice(-10),
+      emergency_type,
+      priority: priority || 'Critical (P1)',
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      landmark: landmark || 'Mira Road GPS Landmark',
+      status: req.body.status || 'pending',
+      assigned_ambulance_id: req.body.assigned_ambulance_id || null,
+      assigned_ambulance_plate: req.body.assigned_ambulance_plate || null,
+      driver_name: req.body.driver_name || null,
+      driver_contact: req.body.driver_contact || null,
+      target_hospital_id: req.body.target_hospital_id || null,
+      target_hospital_name: req.body.target_hospital_name || null,
+      eta_minutes: req.body.eta_minutes || null,
+      distance_km: req.body.distance_km || null,
+      vitals_json: req.body.vitals_json || null,
+      notes: req.body.notes || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const saved = insertEmergencyInDb(newEmergency);
+
+    // Broadcast live SOS incident to Platform Administrator, Driver, CAD Dispatcher
+    broadcastEvent('EMERGENCY_CREATED', saved);
+
+    res.status(201).json({
+      success: true,
+      message: `Emergency incident ${saved.id} registered and broadcasted across network.`,
+      data: saved
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/emergencies/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existing = getEmergencyByIdFromDb(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Emergency incident not found in database.' });
+    }
+
+    const updated = updateEmergencyInDb(id, req.body);
+    if (!updated) {
+      return res.status(400).json({ success: false, message: 'Failed to update emergency.' });
+    }
+
+    // Broadcast updated state to all connected dashboards
+    broadcastEvent('EMERGENCY_UPDATED', updated);
+    if (updated.status === 'completed' || updated.status === 'cancelled') {
+      broadcastEvent('MISSION_ENDED', { emergencyId: id, status: updated.status });
+    }
+
+    res.json({
+      success: true,
+      message: `Emergency incident ${id} updated to status "${updated.status}".`,
+      data: updated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/emergencies/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deleted = deleteEmergencyFromDb(id);
+    if (deleted) {
+      broadcastEvent('EMERGENCY_DELETED', { id });
+      res.json({ success: true, message: `Emergency ${id} removed.` });
+    } else {
+      res.status(404).json({ success: false, message: 'Emergency not found.' });
+    }
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -353,6 +525,10 @@ app.patch('/api/ambulances/:id/status', (req: Request, res: Response) => {
 
   ambulances[idx].status = status;
   saveAmbulances(ambulances);
+
+  // Broadcast fleet status change
+  broadcastEvent('AMBULANCE_STATUS_UPDATED', { id, status, vehicle_number: ambulances[idx].vehicle_number });
+
   res.json({ success: true, message: `Status updated to ${status}`, data: ambulances[idx] });
 });
 

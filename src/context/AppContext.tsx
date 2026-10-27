@@ -287,8 +287,9 @@ const INITIAL_EMERGENCY_REQUESTS: EmergencyRequest[] = [
   }
 ];
 
-// Initial Seed Users for the 5 Recommended Roles (Strictly 10-digit whole numbers)
+// Initial Seed Users for the 5 Recommended Roles (26 Comprehensive Mira Road Personnel)
 const INITIAL_USERS: UserProfile[] = [
+  // 1. Citizens (7 Users)
   {
     id: 'USR-CIT-01',
     name: 'Meera Sharma',
@@ -299,12 +300,105 @@ const INITIAL_USERS: UserProfile[] = [
     emergencyContactName: 'Rajesh Sharma (Spouse)',
     emergencyContactPhone: '9892088770',
     allergies: 'Penicillin, Sulfa drugs',
-    medicalNotes: 'Mild asthma, carries inhaler. Hypertension treated with Amlodipine.',
+    medicalNotes: 'Mild asthma, carries inhaler. Hypertension treated with Amlodipine 5mg.',
     defaultAddress: 'Flat 402, Shanti Park Sector 5, Mira Road East',
-    createdAt: '2025-02-12'
+    createdAt: '2025-02-12',
+    isActive: true
   },
   {
-    id: 'USR-OPR-02',
+    id: 'USR-CIT-02',
+    name: 'Rahul Patil',
+    email: 'rahul.patil@gmail.com',
+    role: 'Citizen',
+    phone: '9820556789',
+    bloodType: 'B Positive (B+)',
+    emergencyContactName: 'Sunita Patil (Mother)',
+    emergencyContactPhone: '9820556780',
+    allergies: 'None recorded',
+    medicalNotes: 'Type 2 Diabetes Mellitus, monitored via continuous glucose sensor.',
+    defaultAddress: 'B-301, Kanakia Beverly Park, Mira Road East',
+    createdAt: '2025-02-14',
+    isActive: true
+  },
+  {
+    id: 'USR-CIT-03',
+    name: 'Sunita Deshmukh',
+    email: 'sunita.deshmukh@yahoo.com',
+    role: 'Citizen',
+    phone: '9819443210',
+    bloodType: 'A Positive (A+)',
+    emergencyContactName: 'Anil Deshmukh (Son)',
+    emergencyContactPhone: '9819443219',
+    allergies: 'Aspirin, NSAIDs',
+    medicalNotes: 'Coronary artery disease, drug-eluting stent placed in 2023. Carries Sorbitrate.',
+    defaultAddress: 'Row House 12, Srishti Sector 1, Mira Road East',
+    createdAt: '2025-02-15',
+    isActive: true
+  },
+  {
+    id: 'USR-CIT-04',
+    name: 'Amit Verma',
+    email: 'amit.verma@outlook.com',
+    role: 'Citizen',
+    phone: '9867112233',
+    bloodType: 'AB Positive (AB+)',
+    emergencyContactName: 'Pooja Verma (Wife)',
+    emergencyContactPhone: '9867112230',
+    allergies: 'Peanuts, Shellfish, Contrast dye',
+    medicalNotes: 'Severe anaphylactic allergies, carries portable auto-injector EpiPen.',
+    defaultAddress: 'Flat 604, Poonam Sagar Complex, Mira Road East',
+    createdAt: '2025-02-16',
+    isActive: true
+  },
+  {
+    id: 'USR-CIT-05',
+    name: 'Farida Merchant',
+    email: 'farida.merchant@gmail.com',
+    role: 'Citizen',
+    phone: '9821889900',
+    bloodType: 'O Negative (O-)',
+    emergencyContactName: 'Zubair Merchant (Brother)',
+    emergencyContactPhone: '9821889901',
+    allergies: 'Dust mites, Pollen, Ibuprofen',
+    medicalNotes: 'Universal red cell donor. Chronic bronchial asthma treated with Budesonide.',
+    defaultAddress: 'A-102, Silver Park Sector 3, Mira Road East',
+    createdAt: '2025-02-18',
+    isActive: true
+  },
+  {
+    id: 'USR-CIT-06',
+    name: 'Vikram Rane',
+    email: 'vikram.rane@rediffmail.com',
+    role: 'Citizen',
+    phone: '9870334455',
+    bloodType: 'A Negative (A-)',
+    emergencyContactName: 'Kavita Rane (Spouse)',
+    emergencyContactPhone: '9870334450',
+    allergies: 'Ciprofloxacin',
+    medicalNotes: 'Stage 2 renal insufficiency. Nephrology care team: Apex Multispeciality.',
+    defaultAddress: 'Flat 204, Sheetal Nagar, Mira Road East',
+    createdAt: '2025-02-19',
+    isActive: true
+  },
+  {
+    id: 'USR-CIT-07',
+    name: 'Priya Kulkarni',
+    email: 'priya.kulkarni@gmail.com',
+    role: 'Citizen',
+    phone: '9820998811',
+    bloodType: 'B Negative (B-)',
+    emergencyContactName: 'Aditya Kulkarni (Husband)',
+    emergencyContactPhone: '9820998810',
+    allergies: 'Amoxicillin, Latex',
+    medicalNotes: 'High-risk maternity profile (28 weeks gestation). Assigned to Bhaktivedanta OB/GYN.',
+    defaultAddress: 'C-501, Jangid Enclave, Mira Bhayandar Road',
+    createdAt: '2025-02-20',
+    isActive: true
+  },
+
+  // 2. Ambulance Operators / Drivers (6 Users)
+  {
+    id: 'USR-OPR-01',
     name: 'Ramesh Pawar',
     email: 'operator.ramesh@lifeline-ems.gov.in',
     role: 'Ambulance Operator',
@@ -314,21 +408,89 @@ const INITIAL_USERS: UserProfile[] = [
     licenseNumber: 'MH-04-2018-009841',
     baseStation: 'Mira Road Railway Station Hub',
     shiftStatus: 'on-duty',
-    createdAt: '2025-02-01'
+    emtLevel: 'Advanced Life Support (ALS) Paramedic',
+    createdAt: '2025-02-01',
+    isActive: true
   },
   {
-    id: 'USR-CRD-03',
-    name: 'Officer Jason Fernandes',
-    email: 'coordinator.jason@lifeline-ems.gov.in',
-    role: 'Emergency Coordinator',
-    phone: '9820133445',
-    operatorCode: 'EOC-7704',
-    terminalNumber: 'TERMINAL-04',
-    radioChannel: 'EMS-FREQ-154.25',
-    createdAt: '2025-01-15'
+    id: 'USR-OPR-02',
+    name: 'Sunil Jadhav',
+    email: 'sunil.jadhav@lifeline-ems.gov.in',
+    role: 'Ambulance Operator',
+    phone: '9820123456',
+    assignedVehicleId: 'AMB-002',
+    assignedVehicleNumber: 'MH-04-AZ-2048',
+    licenseNumber: 'MH-04-2019-014522',
+    baseStation: 'Kanakia Police Station Post',
+    shiftStatus: 'on-duty',
+    emtLevel: 'Advanced Life Support (ALS) Paramedic',
+    createdAt: '2025-02-03',
+    isActive: true
   },
   {
-    id: 'USR-HLT-04',
+    id: 'USR-OPR-03',
+    name: 'Ganesh Shinde',
+    email: 'ganesh.shinde@lifeline-ems.gov.in',
+    role: 'Ambulance Operator',
+    phone: '9820134567',
+    assignedVehicleId: 'AMB-003',
+    assignedVehicleNumber: 'MH-04-BX-3310',
+    licenseNumber: 'MH-04-2020-023194',
+    baseStation: 'Western Express Highway Junction',
+    shiftStatus: 'on-duty',
+    emtLevel: 'Basic (BLS)',
+    createdAt: '2025-02-05',
+    isActive: true
+  },
+  {
+    id: 'USR-OPR-04',
+    name: 'Imran Khan',
+    email: 'imran.khan@lifeline-ems.gov.in',
+    role: 'Ambulance Operator',
+    phone: '9820145678',
+    assignedVehicleId: 'AMB-004',
+    assignedVehicleNumber: 'MH-04-CY-4501',
+    licenseNumber: 'MH-04-2017-005612',
+    baseStation: 'Srishti Sector 1 Stand',
+    shiftStatus: 'on-duty',
+    emtLevel: 'Advanced Life Support (ALS) Paramedic',
+    createdAt: '2025-02-07',
+    isActive: true
+  },
+  {
+    id: 'USR-OPR-05',
+    name: 'Mahendra Solanki',
+    email: 'mahendra.solanki@lifeline-ems.gov.in',
+    role: 'Ambulance Operator',
+    phone: '9820156789',
+    assignedVehicleId: 'AMB-005',
+    assignedVehicleNumber: 'MH-04-DZ-5612',
+    licenseNumber: 'MH-04-2021-031890',
+    baseStation: 'Silver Park Circle Post',
+    shiftStatus: 'off-duty',
+    emtLevel: 'Basic (BLS)',
+    createdAt: '2025-02-08',
+    isActive: true
+  },
+  {
+    id: 'USR-OPR-06',
+    name: 'Deepak More',
+    email: 'deepak.more@lifeline-ems.gov.in',
+    role: 'Ambulance Operator',
+    phone: '9820167890',
+    assignedVehicleId: 'AMB-006',
+    assignedVehicleNumber: 'MH-04-EF-6723',
+    licenseNumber: 'MH-04-2016-004311',
+    baseStation: 'Golden Nest Station Post',
+    shiftStatus: 'on-duty',
+    emtLevel: 'Advanced Life Support (ALS) Paramedic',
+    createdAt: '2025-02-09',
+    isActive: true
+  },
+
+  // 3. Healthcare Coordinators / Doctors (5 Users)
+  {
+    id: 'USR-HLT-01',
     name: 'Dr. Ananya Roy, MD',
     email: 'health.ananya@bhaktivedanta-hospital.org',
     role: 'Healthcare Coordinator',
@@ -337,10 +499,142 @@ const INITIAL_USERS: UserProfile[] = [
     affiliatedHospitalName: 'Bhaktivedanta Hospital & Research Institute',
     department: 'Emergency Medicine & Trauma ICU',
     emergencyContactExtension: 'EXT-108',
-    createdAt: '2025-01-20'
+    staffId: 'BH-TRM-101',
+    createdAt: '2025-01-20',
+    isActive: true
   },
   {
-    id: 'USR-ADM-05',
+    id: 'USR-HLT-02',
+    name: 'Dr. Sanjay Kulkarni, MS',
+    email: 'dr.kulkarni@apex-hospital.in',
+    role: 'Healthcare Coordinator',
+    phone: '9820201122',
+    affiliatedHospitalId: 'HOSP-002',
+    affiliatedHospitalName: 'Apex Multispeciality Hospital',
+    department: 'Critical Care & Orthopedic Trauma',
+    emergencyContactExtension: 'EXT-201',
+    staffId: 'APX-CC-204',
+    createdAt: '2025-01-22',
+    isActive: true
+  },
+  {
+    id: 'USR-HLT-03',
+    name: 'Dr. Farhan Ansari, MD',
+    email: 'dr.ansari@wockhardt-hospitals.com',
+    role: 'Healthcare Coordinator',
+    phone: '9820212233',
+    affiliatedHospitalId: 'HOSP-003',
+    affiliatedHospitalName: 'Wockhardt Hospital Emergency Wing',
+    department: 'Interventional Cardiology & CCU',
+    emergencyContactExtension: 'EXT-305',
+    staffId: 'WCK-CARD-09',
+    createdAt: '2025-01-24',
+    isActive: true
+  },
+  {
+    id: 'USR-HLT-04',
+    name: 'Dr. Neha Singhania, DNB',
+    email: 'dr.singhania@thunga-hospital.org',
+    role: 'Healthcare Coordinator',
+    phone: '9820223344',
+    affiliatedHospitalId: 'HOSP-004',
+    affiliatedHospitalName: 'Thunga Hospital Emergency Unit',
+    department: 'Neuro Trauma & Acute Stroke Care',
+    emergencyContactExtension: 'EXT-402',
+    staffId: 'TNG-NEURO-14',
+    createdAt: '2025-01-25',
+    isActive: true
+  },
+  {
+    id: 'USR-HLT-05',
+    name: 'Dr. Robert D\'Souza, MS',
+    email: 'dr.robert@karuna-hospital.in',
+    role: 'Healthcare Coordinator',
+    phone: '9820234455',
+    affiliatedHospitalId: 'HOSP-005',
+    affiliatedHospitalName: 'Karuna Hospital Trauma Center',
+    department: 'Pediatric Resuscitation & Burns Unit',
+    emergencyContactExtension: 'EXT-510',
+    staffId: 'KRN-RES-33',
+    createdAt: '2025-01-28',
+    isActive: true
+  },
+
+  // 4. CAD Dispatchers / Emergency Coordinators (5 Users)
+  {
+    id: 'USR-CRD-01',
+    name: 'Officer Jason Fernandes',
+    email: 'coordinator.jason@lifeline-ems.gov.in',
+    role: 'Emergency Coordinator',
+    phone: '9820133445',
+    operatorCode: 'EOC-7704',
+    terminalNumber: 'TERMINAL-04',
+    radioChannel: 'EMS-FREQ-154.25 MHz',
+    cadShift: 'Morning (06:00 - 14:00)',
+    cadStationSector: 'Mira Road East EOC Sector 1',
+    createdAt: '2025-01-15',
+    isActive: true
+  },
+  {
+    id: 'USR-CRD-02',
+    name: 'Pradeep Gaikwad',
+    email: 'pradeep.gaikwad@lifeline-ems.gov.in',
+    role: 'Emergency Coordinator',
+    phone: '9820245566',
+    operatorCode: 'EOC-7701',
+    terminalNumber: 'TERMINAL-01',
+    radioChannel: 'EMS-FREQ-154.25 MHz',
+    cadShift: 'Morning (06:00 - 14:00)',
+    cadStationSector: 'Western Express Highway CAD Sector',
+    createdAt: '2025-01-18',
+    isActive: true
+  },
+  {
+    id: 'USR-CRD-03',
+    name: 'Kavita Joshi',
+    email: 'kavita.joshi@lifeline-ems.gov.in',
+    role: 'Emergency Coordinator',
+    phone: '9820256677',
+    operatorCode: 'EOC-7702',
+    terminalNumber: 'TERMINAL-02',
+    radioChannel: 'EMS-FREQ-155.15 MHz',
+    cadShift: 'Evening (14:00 - 22:00)',
+    cadStationSector: 'Mira Bhayandar Central Sector',
+    createdAt: '2025-01-20',
+    isActive: true
+  },
+  {
+    id: 'USR-CRD-04',
+    name: 'Anand Tiwari',
+    email: 'anand.tiwari@lifeline-ems.gov.in',
+    role: 'Emergency Coordinator',
+    phone: '9820267788',
+    operatorCode: 'EOC-7703',
+    terminalNumber: 'TERMINAL-03',
+    radioChannel: 'EMS-FREQ-154.85 MHz',
+    cadShift: 'Evening (14:00 - 22:00)',
+    cadStationSector: 'Srishti-Kanakia Sector CAD',
+    createdAt: '2025-01-22',
+    isActive: true
+  },
+  {
+    id: 'USR-CRD-05',
+    name: 'Rehana Shaikh',
+    email: 'rehana.shaikh@lifeline-ems.gov.in',
+    role: 'Emergency Coordinator',
+    phone: '9820278899',
+    operatorCode: 'EOC-7705',
+    terminalNumber: 'TERMINAL-05',
+    radioChannel: 'EMS-FREQ-156.05 MHz',
+    cadShift: 'Night Watch (22:00 - 06:00)',
+    cadStationSector: 'Overnight Emergency CAD Desk',
+    createdAt: '2025-01-25',
+    isActive: true
+  },
+
+  // 5. Platform Administrators (3 Users)
+  {
+    id: 'USR-ADM-01',
     name: 'Sarah Jenkins',
     email: 'admin.sarah@lifeline-ems.gov.in',
     role: 'Platform Administrator',
@@ -350,7 +644,36 @@ const INITIAL_USERS: UserProfile[] = [
     canManageFleet: true,
     canManageUsers: true,
     adminSecretKey: 'EMS-ROOT-2025',
-    createdAt: '2025-01-10'
+    createdAt: '2025-01-10',
+    isActive: true
+  },
+  {
+    id: 'USR-ADM-02',
+    name: 'Col. Vikram Rathore (Retd.)',
+    email: 'col.rathore@lifeline-ems.gov.in',
+    role: 'Platform Administrator',
+    phone: '9820022334',
+    password: 'emergency108',
+    clearanceLevel: 'Fleet Manager',
+    canManageFleet: true,
+    canManageUsers: false,
+    adminSecretKey: 'EMS-ROOT-2025',
+    createdAt: '2025-01-12',
+    isActive: true
+  },
+  {
+    id: 'USR-ADM-03',
+    name: 'Devendra Mehta',
+    email: 'devendra.mehta@lifeline-ems.gov.in',
+    role: 'Platform Administrator',
+    phone: '9820033445',
+    password: 'emergency108',
+    clearanceLevel: 'System Auditor',
+    canManageFleet: true,
+    canManageUsers: true,
+    adminSecretKey: 'EMS-ROOT-2025',
+    createdAt: '2025-01-14',
+    isActive: true
   }
 ];
 
@@ -827,13 +1150,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
-  // Fetch initial fleet and hospitals from backend
+  // Fetch initial fleet, hospitals, and emergencies from backend
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const [ambRes, hospRes] = await Promise.all([
+      const [ambRes, hospRes, emgRes] = await Promise.all([
         fetch('/api/ambulances'),
-        fetch('/api/hospitals')
+        fetch('/api/hospitals'),
+        fetch('/api/emergencies')
       ]);
 
       if (ambRes.ok) {
@@ -843,6 +1167,85 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (hospRes.ok) {
         const hospData = await hospRes.json();
         setHospitals(hospData.data || []);
+      }
+      if (emgRes.ok) {
+        const emgData = await emgRes.json();
+        if (emgData.success && Array.isArray(emgData.data) && emgData.data.length > 0) {
+          const mappedEmergencies: EmergencyRequest[] = emgData.data.map((e: any) => ({
+            id: e.id,
+            callerName: e.caller_name,
+            callerPhone: e.caller_phone,
+            location: {
+              latitude: e.latitude,
+              longitude: e.longitude,
+              landmark: e.landmark || 'Mira Road'
+            },
+            emergencyType: e.emergency_type,
+            priority: (e.priority || 'Critical (P1)') as EmergencyRequest['priority'],
+            timestamp: new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            receivedAtMs: new Date(e.created_at).getTime(),
+            status: e.status as any,
+            assignedAmbulanceId: e.assigned_ambulance_id,
+            assignedAmbulancePlate: e.assigned_ambulance_plate,
+            driverName: e.driver_name,
+            driverContact: e.driver_contact,
+            targetHospitalId: e.target_hospital_id,
+            targetHospitalName: e.target_hospital_name,
+            distanceKm: e.distance_km,
+            etaMinutes: e.eta_minutes,
+            createdAtIso: e.created_at,
+            updatedAtIso: e.updated_at,
+            vitalsJson: e.vitals_json,
+            notes: e.notes
+          }));
+          setEmergencyRequests(prev => {
+            const combined = [...mappedEmergencies];
+            // keep any local that weren't in remote
+            for (const r of prev) {
+              if (!combined.some(c => c.id === r.id)) {
+                combined.push(r);
+              }
+            }
+            return combined;
+          });
+
+          // Check if an ongoing active mission exists in database
+          const activeDbIncident = emgData.data.find(
+            (e: any) => e.status === 'dispatched' || e.status === 'at-scene' || e.status === 'transporting'
+          );
+          if (activeDbIncident && !activeMission) {
+            const reconstructedMission: DispatchMission = {
+              id: activeDbIncident.id.replace('EMG-', 'MSN-'),
+              ambulanceId: activeDbIncident.assigned_ambulance_id || 'AMB-001',
+              ambulanceVehicleNumber: activeDbIncident.assigned_ambulance_plate || 'MH-04-AZ-1024',
+              ambulanceType: 'Advanced Life Support',
+              driverName: activeDbIncident.driver_name || 'Ramesh Pawar',
+              driverContact: activeDbIncident.driver_contact || '9820112345',
+              patientName: activeDbIncident.caller_name,
+              patientContact: activeDbIncident.caller_phone,
+              emergencyType: activeDbIncident.emergency_type,
+              emergencyLocation: {
+                latitude: activeDbIncident.latitude,
+                longitude: activeDbIncident.longitude,
+                landmark: activeDbIncident.landmark
+              },
+              hospital: {
+                id: activeDbIncident.target_hospital_id || 'HOSP-001',
+                name: activeDbIncident.target_hospital_name || 'Bhaktivedanta Hospital & Research Institute',
+                address: 'Sector 1, Srishti Complex, Mira Road East',
+                location: { latitude: 19.2905, longitude: 72.8628 },
+                emergency_contact: '022-29452500',
+                icu_beds_available: 5,
+                has_trauma_center: true
+              },
+              distanceKm: activeDbIncident.distance_km || 1.8,
+              etaMinutes: activeDbIncident.eta_minutes || 4,
+              status: activeDbIncident.status as any,
+              dispatchedAt: new Date(activeDbIncident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setActiveMission(reconstructedMission);
+          }
+        }
       }
     } catch (err) {
       console.error('Initial data fetch error:', err);
@@ -902,7 +1305,200 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       eventSource.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload.type === 'USER_ADDED') {
+
+          // 1. EMERGENCY CREATED (e.g. Citizen SOS trigger or Dispatch call)
+          if (payload.type === 'EMERGENCY_CREATED') {
+            const emg = payload.data;
+            const newReq: EmergencyRequest = {
+              id: emg.id,
+              callerName: emg.caller_name,
+              callerPhone: emg.caller_phone,
+              location: {
+                latitude: emg.latitude,
+                longitude: emg.longitude,
+                landmark: emg.landmark || 'Mira Road'
+              },
+              emergencyType: emg.emergency_type,
+              priority: (emg.priority || 'Critical (P1)') as EmergencyRequest['priority'],
+              timestamp: 'Just now',
+              receivedAtMs: Date.now(),
+              status: emg.status || 'pending',
+              assignedAmbulanceId: emg.assigned_ambulance_id,
+              assignedAmbulancePlate: emg.assigned_ambulance_plate,
+              driverName: emg.driver_name,
+              driverContact: emg.driver_contact,
+              targetHospitalId: emg.target_hospital_id,
+              targetHospitalName: emg.target_hospital_name,
+              distanceKm: emg.distance_km,
+              etaMinutes: emg.eta_minutes,
+              createdAtIso: emg.created_at,
+              updatedAtIso: emg.updated_at,
+              vitalsJson: emg.vitals_json,
+              notes: emg.notes
+            };
+
+            setEmergencyRequests(prev => {
+              if (prev.some(r => r.id === newReq.id)) return prev;
+              return [newReq, ...prev];
+            });
+
+            // Trigger emergency audio siren alert
+            soundManager.playEmergencyAlert();
+            notify(
+              'emergency',
+              `🚨 NEW SOS ALERT RECEIVED: ${emg.caller_name}`,
+              `${emg.emergency_type} reported at ${emg.landmark || 'Mira Road'}. Immediate response required!`,
+              {
+                missionId: emg.id,
+                vehicleNumber: emg.assigned_ambulance_plate,
+                status: 'pending'
+              }
+            );
+          }
+
+          // 2. EMERGENCY DISPATCHED (Automated or CAD manual dispatch)
+          else if (payload.type === 'EMERGENCY_DISPATCHED') {
+            const data = payload.data;
+            const assignedAmb = data.assigned_ambulance;
+            const hosp = data.recommended_hospital;
+            const emgRec = data.emergency_record;
+
+            // Update emergency request queue
+            setEmergencyRequests(prev => {
+              const reqId = emgRec?.id || data.mission_id;
+              const exists = prev.some(r => r.id === reqId || r.callerName === data.patient_name);
+              const mapped: EmergencyRequest = {
+                id: reqId || `REQ-${Date.now().toString().slice(-5)}`,
+                callerName: data.patient_name,
+                callerPhone: data.patient_contact || '9892088776',
+                location: data.emergency_location,
+                emergencyType: data.emergency_type,
+                priority: 'Critical (P1)',
+                timestamp: 'Just now',
+                receivedAtMs: Date.now(),
+                status: 'assigned',
+                assignedAmbulanceId: assignedAmb?.id,
+                assignedAmbulancePlate: assignedAmb?.vehicle_number,
+                driverName: assignedAmb?.driver_name,
+                driverContact: assignedAmb?.contact,
+                targetHospitalId: hosp?.id,
+                targetHospitalName: hosp?.name,
+                distanceKm: assignedAmb?.distance_km,
+                etaMinutes: assignedAmb?.estimated_eta_minutes || 4,
+                createdAtIso: emgRec?.created_at || new Date().toISOString(),
+                updatedAtIso: new Date().toISOString(),
+                notes: emgRec?.notes
+              };
+
+              if (exists) {
+                return prev.map(r => (r.id === reqId || r.callerName === data.patient_name ? mapped : r));
+              }
+              return [mapped, ...prev];
+            });
+
+            // Mark ambulance status to busy in local state
+            if (assignedAmb?.id) {
+              setAmbulances(prev =>
+                prev.map(a => (a.id === assignedAmb.id ? { ...a, status: 'busy' } : a))
+              );
+            }
+
+            // Create/update active mission across ALL dashboards
+            const mission: DispatchMission = {
+              id: data.mission_id || `MSN-${Date.now().toString().slice(-5)}`,
+              ambulanceId: assignedAmb?.id || 'AMB-001',
+              ambulanceVehicleNumber: assignedAmb?.vehicle_number || 'MH-04-AZ-1024',
+              ambulanceType: assignedAmb?.type || 'Advanced Life Support',
+              driverName: assignedAmb?.driver_name || 'Ramesh Pawar',
+              driverContact: assignedAmb?.contact || '9820112345',
+              patientName: data.patient_name,
+              patientContact: data.patient_contact || '9892088776',
+              emergencyType: data.emergency_type,
+              emergencyLocation: data.emergency_location,
+              hospital: hosp || {
+                id: 'HOSP-001',
+                name: 'Bhaktivedanta Hospital & Research Institute',
+                address: 'Sector 1, Srishti Complex, Mira Road East',
+                location: { latitude: 19.2905, longitude: 72.8628 },
+                emergency_contact: '022-29452500',
+                icu_beds_available: 5,
+                has_trauma_center: true
+              },
+              distanceKm: assignedAmb?.distance_km || 1.8,
+              etaMinutes: assignedAmb?.estimated_eta_minutes || assignedAmb?.eta_minutes || 4,
+              status: 'dispatched',
+              dispatchedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            setActiveMission(mission);
+
+            // Audio siren alert for all operators, drivers, and admin
+            soundManager.playEmergencyAlert();
+            notify(
+              'emergency',
+              '🚨 AMBULANCE DISPATCHED REAL-TIME',
+              `Unit ${mission.ambulanceVehicleNumber} (${mission.driverName}) en route to ${mission.patientName} @ ${mission.emergencyLocation.landmark}. ETA ~${mission.etaMinutes} mins.`,
+              {
+                missionId: mission.id,
+                vehicleNumber: mission.ambulanceVehicleNumber,
+                status: 'dispatched',
+                etaMinutes: mission.etaMinutes
+              }
+            );
+          }
+
+          // 3. EMERGENCY UPDATED
+          else if (payload.type === 'EMERGENCY_UPDATED') {
+            const updated = payload.data;
+            setEmergencyRequests(prev =>
+              prev.map(r =>
+                r.id === updated.id
+                  ? {
+                      ...r,
+                      status: updated.status,
+                      assignedAmbulanceId: updated.assigned_ambulance_id !== undefined ? updated.assigned_ambulance_id : r.assignedAmbulanceId,
+                      assignedAmbulancePlate: updated.assigned_ambulance_plate !== undefined ? updated.assigned_ambulance_plate : r.assignedAmbulancePlate,
+                      driverName: updated.driver_name !== undefined ? updated.driver_name : r.driverName,
+                      driverContact: updated.driver_contact !== undefined ? updated.driver_contact : r.driverContact,
+                      targetHospitalId: updated.target_hospital_id !== undefined ? updated.target_hospital_id : r.targetHospitalId,
+                      targetHospitalName: updated.target_hospital_name !== undefined ? updated.target_hospital_name : r.targetHospitalName,
+                      distanceKm: updated.distance_km !== undefined ? updated.distance_km : r.distanceKm,
+                      etaMinutes: updated.eta_minutes !== undefined ? updated.eta_minutes : r.etaMinutes,
+                      updatedAtIso: updated.updated_at || new Date().toISOString(),
+                      vitalsJson: updated.vitals_json !== undefined ? updated.vitals_json : r.vitalsJson,
+                      notes: updated.notes !== undefined ? updated.notes : r.notes
+                    }
+                  : r
+              )
+            );
+            setActiveMission(prev => {
+              if (prev && (prev.id === updated.id || prev.id.includes(updated.id.replace('EMG-', '')))) {
+                return {
+                  ...prev,
+                  status: updated.status,
+                  etaMinutes: updated.eta_minutes !== undefined ? updated.eta_minutes : prev.etaMinutes,
+                  distanceKm: updated.distance_km !== undefined ? updated.distance_km : prev.distanceKm
+                };
+              }
+              return prev;
+            });
+          }
+
+          // 4. MISSION ENDED / RESOLVED / CANCELLED
+          else if (payload.type === 'MISSION_ENDED') {
+            setActiveMission(null);
+            soundManager.playStatusBlip();
+            notify('status', 'INCIDENT CONCLUDED', `Mission ${payload.data.emergencyId} marked as ${payload.data.status}.`);
+          }
+
+          // 5. AMBULANCE STATUS UPDATED
+          else if (payload.type === 'AMBULANCE_STATUS_UPDATED') {
+            const { id, status } = payload.data;
+            setAmbulances(prev => prev.map(a => (a.id === id ? { ...a, status } : a)));
+          }
+
+          // 6. USER DB EVENTS
+          else if (payload.type === 'USER_ADDED') {
             const newUser = payload.data as UserProfile;
             const sanitizedNewUser: UserProfile = {
               ...newUser,
@@ -1292,28 +1888,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           latitude: lat,
           longitude: lng,
           emergency_type: emergencyType,
-          patient_name: patientName
+          patient_name: patientName,
+          patient_contact: clean10DigitPhone(patientContact),
+          landmark,
+          priority: 'Critical (P1)'
         })
       });
 
       const data = await res.json();
       if (res.ok && data.success && data.dispatch_result) {
         const result: DispatchResult = data.dispatch_result;
-
         const assignedVehicle = result.assigned_ambulance;
         const eta = assignedVehicle.estimated_eta_minutes || assignedVehicle.eta_minutes || 4;
         const dist = assignedVehicle.distance_km || 1.8;
 
-        // Build active mission to carry forward to Driver & Patient
+        // Build active mission
         const newMission: DispatchMission = {
-          id: `MSN-${Date.now().toString().slice(-5)}`,
+          id: (result as any).mission_id || `MSN-${Date.now().toString().slice(-5)}`,
           ambulanceId: assignedVehicle.id,
           ambulanceVehicleNumber: assignedVehicle.vehicle_number,
           ambulanceType: assignedVehicle.type,
           driverName: assignedVehicle.driver_name,
           driverContact: assignedVehicle.contact,
           patientName,
-          patientContact,
+          patientContact: clean10DigitPhone(patientContact),
           emergencyType,
           emergencyLocation: {
             latitude: lat,
@@ -1356,11 +1954,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             };
             return updated;
           }
-          // If not in queue, prepend as active assigned request
           const newReq: EmergencyRequest = {
             id: `REQ-${Date.now().toString().slice(-5)}`,
             callerName: patientName,
-            callerPhone: patientContact,
+            callerPhone: clean10DigitPhone(patientContact),
             location: {
               latitude: lat,
               longitude: lng,
@@ -1381,7 +1978,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // Update ambulance status locally & backend to 'busy'
         await toggleAmbulanceStatus(assignedVehicle.id, 'busy');
 
-        // TRIGGER REAL-TIME EMERGENCY AUDIO CHIME & TOAST NOTIFICATION
         soundManager.playEmergencyAlert();
         notify(
           'emergency',
@@ -1421,7 +2017,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         prev.map(a => (a.id === ambulanceId ? { ...a, status: nextStatus } : a))
       );
 
-      // Trigger status audio blip & toast alert
       soundManager.playStatusBlip();
       notify(
         'status',
@@ -1438,9 +2033,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const updateMissionStatus = (status: DispatchMission['status']) => {
+  const updateMissionStatus = async (status: DispatchMission['status']) => {
     if (!activeMission) return;
+    const missionId = activeMission.id;
     setActiveMission(prev => (prev ? { ...prev, status } : null));
+
+    // Sync to SQLite emergencies table
+    try {
+      const emgId = missionId.replace('MSN-', 'EMG-');
+      await fetch(`/api/emergencies/${emgId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+    } catch (e) {
+      console.warn('Status sync warning:', e);
+    }
 
     soundManager.playStatusBlip();
     notify(
@@ -1459,8 +2067,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (activeMission) {
       const completedMissionId = activeMission.id;
       const vehicleNum = activeMission.ambulanceVehicleNumber;
-      // Mark assigned ambulance back to available
-      await toggleAmbulanceStatus(activeMission.ambulanceId, 'available');
+      const ambId = activeMission.ambulanceId;
+
+      // Update backend status to completed
+      try {
+        const emgId = completedMissionId.replace('MSN-', 'EMG-');
+        await fetch(`/api/emergencies/${emgId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'completed' })
+        });
+      } catch (e) {
+        console.warn('Complete mission error:', e);
+      }
+
+      await toggleAmbulanceStatus(ambId, 'available');
       setActiveMission(null);
 
       soundManager.playStatusBlip();
@@ -1481,7 +2102,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (activeMission) {
       const cancelledId = activeMission.id;
       const vehicleNum = activeMission.ambulanceVehicleNumber;
-      await toggleAmbulanceStatus(activeMission.ambulanceId, 'available');
+      const ambId = activeMission.ambulanceId;
+
+      try {
+        const emgId = cancelledId.replace('MSN-', 'EMG-');
+        await fetch(`/api/emergencies/${emgId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled' })
+        });
+      } catch (e) {
+        console.warn('Cancel emergency error:', e);
+      }
+
+      await toggleAmbulanceStatus(ambId, 'available');
       setActiveMission(null);
 
       soundManager.playStatusBlip();
@@ -1721,15 +2355,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const createEmergencyRequest = (
     req: Omit<EmergencyRequest, 'id' | 'receivedAtMs' | 'timestamp' | 'status'>
   ): EmergencyRequest => {
+    const id = `EMG-${Date.now().toString().slice(-5)}`;
     const newReq: EmergencyRequest = {
       ...req,
-      id: `REQ-${Date.now().toString().slice(-5)}`,
+      id,
       receivedAtMs: Date.now(),
       timestamp: 'Just now',
       status: 'pending'
     };
 
     setEmergencyRequests(prev => [newReq, ...prev]);
+
+    // Persist to SQLite and broadcast via SSE
+    fetch('/api/emergencies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        caller_name: req.callerName,
+        caller_phone: clean10DigitPhone(req.callerPhone),
+        emergency_type: req.emergencyType,
+        priority: req.priority || 'Critical (P1)',
+        latitude: req.location.latitude,
+        longitude: req.location.longitude,
+        landmark: req.location.landmark,
+        status: 'pending',
+        notes: req.notes
+      })
+    }).catch(err => console.warn('Emergency persist warning:', err));
+
     soundManager.playEmergencyAlert();
     notify(
       'emergency',
@@ -1775,10 +2429,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return res;
   };
 
-  const resolveEmergencyRequest = (requestId: string) => {
+  const resolveEmergencyRequest = async (requestId: string) => {
     setEmergencyRequests(prev =>
       prev.map(r => (r.id === requestId ? { ...r, status: 'completed' } : r))
     );
+
+    try {
+      await fetch(`/api/emergencies/${requestId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      });
+    } catch (e) {
+      console.warn('Resolve emergency sync error:', e);
+    }
+
     soundManager.playStatusBlip();
     notify('status', 'INCIDENT ARCHIVED', `Emergency call ${requestId} marked as resolved.`);
   };
